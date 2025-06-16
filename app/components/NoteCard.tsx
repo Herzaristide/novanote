@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
-import 'prismjs/components/prism-javascript'; // add more languages as needed
-// import 'prismjs/themes/prism-tomorrow.css';
+import 'prismjs/components/prism-javascript';
+import { Copy, Eye, Plus, X, Maximize2, Trash } from 'lucide-react';
 
 interface Collection {
   id: string;
@@ -55,7 +55,6 @@ export default function NoteCard({
   editingHiddenContent,
   onEdit,
   onInputChange,
-  bgColor,
   onDelete,
   collections,
   onAddToCollection,
@@ -63,6 +62,7 @@ export default function NoteCard({
   const [showHidden, setShowHidden] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const handleAddToCollection = () => {
     if (selectedCollection) {
@@ -77,166 +77,281 @@ export default function NoteCard({
     setTimeout(() => setCopied(false), 1200);
   };
 
+  // Handler for fullscreen toggle
+  const handleFullscreen = () => {
+    setIsFullscreen(true);
+  };
+
+  const handleCloseFullscreen = () => {
+    setIsFullscreen(false);
+  };
+
   return (
-    <li
-      className={`relative border-2 border-blue-200 rounded-xl shadow-md p-4 flex flex-col gap-2 transition hover:scale-105 ${bgColor}`}
-      style={{
-        perspective: 1000,
-        minHeight: 0,
-        height: 'auto',
-      }}
-    >
-      {/* Copy button */}
-      <button
-        className='absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded text-xs shadow transition z-10'
-        onClick={handleCopy}
-        title='Copy content'
-        type='button'
-      >
-        {copied ? 'Copied!' : 'Copy'}
-      </button>
+    <>
       <div
-        className={`transition-transform duration-500 ease-in-out w-full h-full ${
-          showHidden ? 'rotate-y-180' : ''
-        }`}
-        style={{
-          transformStyle: 'preserve-3d',
-          position: 'relative',
-          minHeight: 0,
-          height: 'auto',
-        }}
+        className={`relative rounded-xs flex transition perspective-1000 h-fit group`}
       >
-        {/* Front (content) */}
-        <div
-          className={`absolute inset-0 w-full h-full transition-opacity duration-500 ${
-            showHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}
-          style={{
-            backfaceVisibility: 'hidden',
-            minHeight: 0,
-            height: 'auto',
-            position: 'relative',
-          }}
-        >
-          {isCodeLike((isEditing ? editingContent : content) || '') ? (
-            <Editor
-              value={isEditing ? editingContent : content}
-              onValueChange={(code) =>
-                onInputChange(
-                  {
-                    target: { value: code },
-                  } as React.ChangeEvent<HTMLTextAreaElement>,
-                  id,
-                  'content'
-                )
-              }
-              highlight={(code) =>
-                Prism.highlight(code, Prism.languages.javascript, 'javascript')
-              }
-              padding={10}
-              style={{
-                fontFamily: 'monospace',
-                fontSize: 16,
-                background: '#2d2d2d',
-                color: '#fff',
-                borderRadius: 8,
-                minHeight: 40,
-              }}
-              onFocus={() => onEdit(id, content, hidden_content)}
+        {/* Button bar: only visible on hover/focus of card */}
+        <div className='absolute top-2 right-2 flex gap-2 z-10 items-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto'>
+          <div className='flex justify-center bg-gray-700 text-white rounded-xs'>
+            <Plus
+              className='rounded-xs transition'
+              onClick={handleAddToCollection}
             />
-          ) : (
-            <textarea
-              className='border-2 border-blue-300 rounded-lg p-2 bg-white/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition text-lg font-medium resize-none w-full'
-              value={isEditing ? editingContent : content}
-              onFocus={() => onEdit(id, content, hidden_content)}
-              onChange={(e) => onInputChange(e, id, 'content')}
-              style={{
-                minHeight: 40,
-                height: 'auto',
-                overflow: 'hidden',
-              }}
-              rows={Math.max(
-                3,
-                ((isEditing ? editingContent : content) || '').split('\n')
-                  .length
-              )}
-            />
-          )}
-        </div>
-        {/* Back (hidden_content) */}
-        <div
-          className={`absolute inset-0 w-full h-full transition-opacity duration-500 ${
-            showHidden ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
-          style={{
-            transform: 'rotateY(180deg)',
-            backfaceVisibility: 'hidden',
-            minHeight: 0,
-            height: 'auto',
-            position: 'relative',
-          }}
-        >
-          <textarea
-            className='border-2 border-yellow-300 rounded-lg p-2 bg-white/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 transition text-lg font-medium resize-none w-full'
-            value={isEditing ? editingHiddenContent : hidden_content}
-            onFocus={() => onEdit(id, content, hidden_content)}
-            onChange={(e) => onInputChange(e, id, 'hidden_content')}
-            style={{
-              minHeight: 40,
-              height: 'auto',
-              overflow: 'hidden',
-            }}
-            rows={Math.max(
-              3,
-              ((isEditing ? editingHiddenContent : hidden_content) || '').split(
-                '\n'
-              ).length
-            )}
+            <select
+              className=''
+              value={selectedCollection}
+              onChange={(e) => setSelectedCollection(e.target.value)}
+            >
+              <option value=''>Collection</option>
+              {collections.map((col) => (
+                <option key={col.id} value={col.id}>
+                  {col.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Copy
+            className='hover:bg-gray-300 text-gray-700 rounded-xs transition'
+            onClick={handleCopy}
+            type='button'
+          />
+          <Eye
+            className='text-green-500 rounded-xs transition hover:bg-gray-300'
+            onClick={() => setShowHidden((v) => !v)}
+          />
+          <Maximize2
+            className='text-blue-500 rounded-xs transition hover:bg-gray-300 cursor-pointer'
+            onClick={handleFullscreen}
+          />
+          <Trash
+            className='text-red-500 rounded-xs transition hover:bg-gray-300'
+            onClick={() => onDelete && onDelete(id)}
           />
         </div>
-      </div>
-      <div className='flex justify-between mt-2 items-center gap-2 flex-wrap'>
-        <div className='flex gap-2 items-center'>
-          <select
-            className='border rounded px-2 py-1 text-sm'
-            value={selectedCollection}
-            onChange={(e) => setSelectedCollection(e.target.value)}
+        {/* Content */}
+        <div
+          className={`relative transition-transform duration-500 ease-in-out w-full transform-3d ${
+            showHidden ? 'rotate-y-180' : ''
+          }`}
+        >
+          {/* Front (content) */}
+          <div
+            className={`relative w-full h-full transition-opacity duration-500 bg-gray-300 ${
+              showHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}
           >
-            <option value=''>Add to collection</option>
-            {collections.map((col) => (
-              <option key={col.id} value={col.id}>
-                {col.name}
-              </option>
-            ))}
-          </select>
-          <button
-            className='bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-sm transition'
-            onClick={handleAddToCollection}
-            disabled={!selectedCollection}
+            {isCodeLike((isEditing ? editingContent : content) || '') ? (
+              <Editor
+                value={isEditing ? editingContent : content}
+                onValueChange={(code) =>
+                  onInputChange(
+                    {
+                      target: { value: code },
+                    } as React.ChangeEvent<HTMLTextAreaElement>,
+                    id,
+                    'content'
+                  )
+                }
+                highlight={(code) =>
+                  Prism.highlight(
+                    code,
+                    Prism.languages.javascript,
+                    'javascript'
+                  )
+                }
+                padding={8}
+                className='rounded-xs font-mono bg-[#2d2d2d] text-white'
+                onFocus={() => onEdit(id, content, hidden_content)}
+              />
+            ) : (
+              <textarea
+                className='p-2 focus:outline-none focus:ring-2 focus:ring-red-400 transition font-mono resize-none w-full'
+                value={isEditing ? editingContent : content}
+                onFocus={() => onEdit(id, content, hidden_content)}
+                onChange={(e) => onInputChange(e, id, 'content')}
+                rows={Math.max(
+                  3,
+                  ((isEditing ? editingContent : content) || '').split('\n')
+                    .length
+                )}
+              />
+            )}
+          </div>
+          {/* Back (hidden_content) */}
+          <div
+            className={`absolute inset-0 w-full h-full transition-opacity duration-500 bg-gray-300 ${
+              showHidden ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+            style={{
+              transform: 'rotateY(180deg)',
+              backfaceVisibility: 'hidden',
+              minHeight: 0,
+              height: 'auto',
+            }}
           >
-            Add
-          </button>
+            <textarea
+              className='p-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition resize-none w-full'
+              value={isEditing ? editingHiddenContent : hidden_content}
+              onFocus={() => onEdit(id, content, hidden_content)}
+              onChange={(e) => onInputChange(e, id, 'hidden_content')}
+              rows={Math.max(
+                3,
+                (
+                  (isEditing ? editingHiddenContent : hidden_content) || ''
+                ).split('\n').length
+              )}
+            />
+          </div>
         </div>
-        <div className='flex gap-2'>
-          <button
-            className='bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm transition'
-            onClick={() => setShowHidden((v) => !v)}
-          >
-            {showHidden ? 'Show content' : 'Show hidden content'}
-          </button>
-          <button
-            className='bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition'
-            onClick={() => onDelete && onDelete(id)}
-          >
-            Delete
-          </button>
-        </div>
       </div>
-      <style>{`
-        .rotate-y-180 {
-          transform: rotateY(180deg);
-        }
-      `}</style>
-    </li>
+      {/* Fullscreen Modal */}
+      {isFullscreen && (
+        <div
+          className='fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center'
+          onClick={handleCloseFullscreen}
+        >
+          <div
+            className='relative bg-white rounded-lg shadow-lg w-full max-w-3xl h-[80vh] flex flex-col p-0'
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Button bar in fullscreen */}
+            <div className='flex gap-2 items-center justify-end p-4 border-b border-gray-200'>
+              <div className='flex justify-center bg-gray-700 text-white rounded-xs'>
+                <Plus
+                  className='rounded-xs transition'
+                  onClick={handleAddToCollection}
+                />
+                <select
+                  className=''
+                  value={selectedCollection}
+                  onChange={(e) => setSelectedCollection(e.target.value)}
+                >
+                  <option value=''>Collection</option>
+                  {collections.map((col) => (
+                    <option key={col.id} value={col.id}>
+                      {col.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Copy
+                className='hover:bg-gray-300 text-gray-700 rounded-xs transition'
+                onClick={handleCopy}
+                type='button'
+              />
+              <Eye
+                className='text-green-500 rounded-xs transition hover:bg-gray-300'
+                onClick={() => setShowHidden((v) => !v)}
+              />
+
+              <button
+                className='ml-2 text-gray-700 hover:text-red-500 text-xl'
+                onClick={handleCloseFullscreen}
+                title='Close'
+              >
+                <X />
+              </button>
+            </div>
+            {/* Transition between content and hidden_content in fullscreen */}
+            <div className='relative flex-1 overflow-auto p-6'>
+              <div
+                className={`relative transition-transform duration-500 ease-in-out w-full h-full ${
+                  showHidden ? 'rotate-y-180' : ''
+                }`}
+                style={{ transformStyle: 'preserve-3d' }}
+              >
+                {/* Front (content) */}
+                <div
+                  className={`absolute inset-0 w-full h-full transition-opacity duration-500 bg-gray-100 rounded ${
+                    showHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                  }`}
+                  style={{
+                    backfaceVisibility: 'hidden',
+                  }}
+                >
+                  <h2 className='text-lg font-bold mb-4'>Note</h2>
+                  {isCodeLike((isEditing ? editingContent : content) || '') ? (
+                    <Editor
+                      value={isEditing ? editingContent : content}
+                      onValueChange={(code) =>
+                        onInputChange(
+                          {
+                            target: { value: code },
+                          } as React.ChangeEvent<HTMLTextAreaElement>,
+                          id,
+                          'content'
+                        )
+                      }
+                      highlight={(code) =>
+                        Prism.highlight(
+                          code,
+                          Prism.languages.javascript,
+                          'javascript'
+                        )
+                      }
+                      padding={8}
+                      className='rounded-xs font-mono bg-[#2d2d2d] text-white min-h-[200px]'
+                      onFocus={() => onEdit(id, content, hidden_content)}
+                    />
+                  ) : (
+                    <pre className='whitespace-pre-wrap break-words font-mono bg-gray-100 p-4 rounded h-full'>
+                      {isEditing ? editingContent : content}
+                    </pre>
+                  )}
+                </div>
+                {/* Back (hidden_content) */}
+                <div
+                  className={`absolute inset-0 w-full h-full transition-opacity duration-500 bg-yellow-50 rounded ${
+                    showHidden ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                  }`}
+                  style={{
+                    transform: 'rotateY(180deg)',
+                    backfaceVisibility: 'hidden',
+                  }}
+                >
+                  <h3 className='text-md font-semibold mb-2'>Hidden Content</h3>
+                  {isCodeLike(
+                    (isEditing ? editingHiddenContent : hidden_content) || ''
+                  ) ? (
+                    <Editor
+                      value={isEditing ? editingHiddenContent : hidden_content}
+                      onValueChange={(code) =>
+                        onInputChange(
+                          {
+                            target: { value: code },
+                          } as React.ChangeEvent<HTMLTextAreaElement>,
+                          id,
+                          'hidden_content'
+                        )
+                      }
+                      highlight={(code) =>
+                        Prism.highlight(
+                          code,
+                          Prism.languages.javascript,
+                          'javascript'
+                        )
+                      }
+                      padding={8}
+                      className='rounded-xs font-mono bg-[#2d2d2d] text-white min-h-[200px]'
+                      onFocus={() => onEdit(id, content, hidden_content)}
+                    />
+                  ) : (
+                    <pre className='whitespace-pre-wrap break-words font-mono bg-yellow-50 p-4 rounded h-full'>
+                      {isEditing ? editingHiddenContent : hidden_content}
+                    </pre>
+                  )}
+                </div>
+              </div>
+              <style>{`
+                .rotate-y-180 {
+                  transform: rotateY(180deg);
+                }
+              `}</style>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
