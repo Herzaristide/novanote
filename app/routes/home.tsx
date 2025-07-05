@@ -5,10 +5,10 @@ import {
   updateNote,
   deleteNote,
 } from '~/supabase/notesApi';
-import NotesList from '~/components/NotesList';
 import CreateNoteForm from '~/components/CreateNoteForm';
 import { useEffect, useState } from 'react';
 import { supabase } from '~/utils/supabase';
+import NoteCard from '~/components/NoteCard';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -31,6 +31,8 @@ export default function Home() {
   const [collections, setCollections] = useState<
     { id: string; name: string }[]
   >([]);
+  const [columnCount, setColumnCount] = useState(3);
+  const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
 
   // Fetch notes for the current user
   useEffect(() => {
@@ -99,6 +101,18 @@ export default function Home() {
     setEditingHiddenContent(hiddenContent);
   };
 
+  const handleSelectNote = (noteId: string) => {
+    setSelectedNotes((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) {
+        newSet.delete(noteId);
+      } else {
+        newSet.add(noteId);
+      }
+      return newSet;
+    });
+  };
+
   // Autosave on input change for both fields
   const handleInputChange = async (
     e: React.ChangeEvent<HTMLTextAreaElement>,
@@ -161,27 +175,74 @@ export default function Home() {
   const getColor = (idx: number) => pastelColors[idx % pastelColors.length];
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-blue-50 via-pink-50 to-yellow-50 py-10'>
-      <CreateNoteForm
-        onCreate={handleCreateNote}
-        loading={loading}
-        error={error}
-        success={success}
-      />
+    <div className='min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'>
+      {/* Modern header with selection info */}
+      {selectedNotes.size > 0 && (
+        <div className='sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200/50 p-4 mb-6'>
+          <div className='max-w-7xl mx-auto flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <div className='w-8 h-8 bg-violet-500 rounded-full flex items-center justify-center'>
+                <span className='text-white text-sm font-semibold'>
+                  {selectedNotes.size}
+                </span>
+              </div>
+              <span className='text-gray-700 font-medium'>
+                {selectedNotes.size} note{selectedNotes.size > 1 ? 's' : ''}{' '}
+                selected
+              </span>
+            </div>
+            <button
+              onClick={() => setSelectedNotes(new Set())}
+              className='px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors'
+            >
+              Clear selection
+            </button>
+          </div>
+        </div>
+      )}
 
-      <NotesList
-        notes={notes}
-        fetchingNotes={fetchingNotes}
-        editingNoteId={editingNoteId}
-        editingContent={editingContent}
-        editingHiddenContent={editingHiddenContent}
-        handleEdit={handleEdit}
-        handleInputChange={handleInputChange}
-        getColor={getColor}
-        onDelete={handleDelete}
-        collections={collections}
-        onAddToCollection={handleAddToCollection}
-      />
+      {/* Main content area */}
+      <div className='max-w-7xl mx-auto p-6'>
+        <div
+          className='gap-6 space-y-6'
+          style={{
+            columnCount,
+            columnGap: '24px',
+          }}
+        >
+          {/* Modern create note form */}
+          <div className='break-inside-avoid mb-6'>
+            <CreateNoteForm
+              onCreate={handleCreateNote}
+              loading={loading}
+              error={error}
+              success={success}
+            />
+          </div>
+
+          {/* Note cards */}
+          {notes.map((note, idx) => (
+            <div key={note.id} className='break-inside-avoid mb-6'>
+              <NoteCard
+                id={note.id}
+                content={note.content}
+                hidden_content={note.hidden_content}
+                isEditing={editingNoteId === note.id}
+                editingContent={editingContent}
+                editingHiddenContent={editingHiddenContent}
+                onEdit={handleEdit}
+                onInputChange={handleInputChange}
+                bgColor={getColor(idx)}
+                onDelete={handleDelete}
+                collections={collections}
+                onAddToCollection={handleAddToCollection}
+                isSelected={selectedNotes.has(note.id)}
+                onSelect={handleSelectNote}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
